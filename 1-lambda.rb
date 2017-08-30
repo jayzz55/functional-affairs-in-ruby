@@ -1,10 +1,16 @@
-function1 = lambda do |x| # !> assigned but unused variable - function1
+add1 = lambda do |x|
   x + 1
 end
 
-function2 = lambda{|x| x + 1} # !> assigned but unused variable - function2
+add1 = lambda{|x| x + 1}
 
 # Shorthand to declare a lambda
-function3 = -> (x) { x + 1 }
+add1 = -> (x) { x + 1 }
 
-function3.call(9) # => 10
+add1.call(9) # => 10
+
+# Shorthand to call a lambda
+add1.(9) # => 10
+
+# Shorthand to call a lambda
+add1[9] # => 10

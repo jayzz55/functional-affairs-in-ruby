@@ -2,7 +2,7 @@ map = ->(function, collection) { collection.map(&function) }
 
 adder = proc { |x, y| x + y }
 
-add1 = adder.curry.(1) # => #<Proc:0x007f85a28aa758>
+add1 = adder.curry.(1) # => #<Proc:0x007f80690c4720>
 
 map.(add1, [1,2,3,4,5]) # => [2, 3, 4, 5, 6]
 
