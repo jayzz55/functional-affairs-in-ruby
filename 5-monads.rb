@@ -1,37 +1,81 @@
-require 'transproc'
 require 'dry-monads'
 
 extend Dry::Monads::Try::Mixin
-
-module Fn
-  extend Transproc::Registry
-end
-
-add_header = Fn[-> (val) { "Title: #{val}" } ]
-append_name = Fn[-> (val) { "#{val} My name" } ]
-strip_word = Fn[-> (val) { :strip.to_proc.(val) } ]
-strip_word = Fn[strip_word]
-capitalize = Fn[:capitalize.to_proc]
-format_as_title = strip_word >> capitalize >> add_header >> append_name
-
 M = Dry::Monads
 
-M.Maybe(1234).inspect # => "Some(1234)"
-M.Maybe(nil).inspect # => "None"
+# {{{1 Maybe Monads
+## {{{2 Pizza in a box
+M.Maybe('pizza').inspect
+M.Maybe(nil).inspect 
+# }}}
 
-result = M.Maybe('  hello world  ').bind(format_as_title) # => "Title: Hello world My name"
+## {{{2 Slicing the pizza with bind and fmap
+slize_pizza = -> (pizza) { M.Some('pizza slices') }
 
-result = M.Maybe('  hello world  ').fmap(format_as_title) # => Some("Title: Hello world My name")
+result = M.Maybe('some pizza').bind(slize_pizza)
+result = M.Maybe('some pizza').fmap(slize_pizza)
+## }}}
 
+## {{{2 Chaining to deliver the pizza
+deliver_pizza = -> (pizza) { M.Some('pizza delivered to Zendesk office') }
 
+result = M.Maybe('some pizza').bind(slize_pizza).bind(deliver_pizza)
+result = M.Maybe('some pizza').fmap(slize_pizza).bind(deliver_pizza)
+## }}
+
+## {{{2 Teeing to find parking
+### {{{3 When can find parking
+find_parking = -> (_) { M.Some(true) }
+
+result = M.Maybe('some pizza').bind(slize_pizza).tee(find_parking).bind(deliver_pizza)
+### }}}
+
+### {{{3 When can NOT find parking
+find_parking = -> (_) { M.None }
+
+result = M.Maybe('some pizza').bind(slize_pizza).tee(find_parking).bind(deliver_pizza)
+### }}}
+## }}}
+#}}}
+
+# {{{1 Result Monads (a.k.a Either Monads)
+## {{{2 I want to know why my pizza is NOT here
+find_parking = -> (_) { M.Failure('cannot find parking ¯\_(ツ)_/¯') }
+deliver_pizza = -> (pizza) { M.Success('pizza delivered to Zendesk office') }
+
+result = M.Maybe('some pizza').bind(slize_pizza).tee(find_parking).bind(deliver_pizza)
+## }}}
+
+## {{{2 OR.. 
+find_parking = -> (_) { M.Failure('cannot find parking ¯\_(ツ)_/¯') }
+deliver_pizza = -> (pizza) { M.Success('pizza delivered to Zendesk office') }
+flip_it = M.Failure('(ノ°Д°）ノ︵ ')
+
+result = M.Maybe('some pizza').bind(slize_pizza).tee(find_parking).bind(deliver_pizza).or(flip_it)
+## }}}
+
+## {{{2 When Pizza is successfully delivered
+find_parking = -> (_) { M.Success('cannot find parking ¯\_(ツ)_/¯') }
+deliver_pizza = -> (pizza) { M.Success('pizza delivered to Zendesk office') }
+
+result = M.Maybe('some pizza').bind(slize_pizza).tee(find_parking).bind(deliver_pizza)
+## }}}
+# }}}
+
+# {{{1 Try Monads - When handling exception, ie: Calling Roro staff to deliver pizza
+## {{{2 When Successful call
+find_parking = -> (_) { M.Some(true) }
+call_roro_staff = -> (_) { Try() { 'calling roro staff' }.to_result }
+
+result = M.Maybe('some pizza').bind(slize_pizza).tee(find_parking).bind(call_roro_staff).bind(deliver_pizza)
+## }}}
+
+## {{{2 When there's an exception
 class NetworkError < StandardError
 end
 
-fetch_data = ->(_) { raise NetworkError, 'some network error' }
+call_roro_staff = -> (_) { Try() { raise NetworkError.new('Sorry Vodafone network is currently down T__T') }.to_result }
 
-format_as_title = strip_word >> capitalize >> fetch_data >> add_header >> append_name
-
-try_result = Try(NetworkError) { M.Maybe('  hello world  ').bind(format_as_title) }.to_either
-try_result.inspect # => "Left(#<NetworkError: some network error>)"
-M.Right(134).value.inspect # => "134"
-M.Left("error").value.inspect # => "\"error\""
+result = M.Maybe('some pizza').bind(slize_pizza).tee(find_parking).bind(call_roro_staff).bind(deliver_pizza)
+## }}}
+# }}}
